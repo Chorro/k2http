@@ -1,0 +1,20 @@
+limiter:
+  max_messages: ${LIMITER_MAX_MESSAGES}
+  # max_bytes: 5242880
+
+kafka:
+  broker: "${KAFKA_BROKERS}"
+  consumergroup: "${KAFKA_CONSUMER_GROUP}"
+  topics: ${KAFKA_TOPICS}
+  messageParameters: ${HTTP_POST_PARAMS}
+  offsetReset: ${KAFKA_OFFSET_RESET}
+  version: '${KAFKA_VERSION}'
+
+batch:
+  size: ${BATCH_SIZE}
+  timeoutMillis: ${BATCH_TIMEOUT_MS}
+  deflate: ${BATCH_DEFLATE}
+
+http:
+  url: "${HTTP_ENDPOINT}"
+  insecure: ${HTTP_INSECURE}

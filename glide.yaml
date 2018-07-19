@@ -1,0 +1,11 @@
+package: github.com/wizzie-io/k2http
+import:
+- package: github.com/Shopify/sarama
+  version: ^1.16.0
+- package: github.com/sirupsen/logrus
+  version: ^1.0.3
+- package: github.com/bsm/sarama-cluster
+  version: ^2.1.8
+- package: github.com/x-cray/logrus-prefixed-formatter
+  # Need for logrus-prefixed-formatter
+- package: github.com/mgutz/ansi
