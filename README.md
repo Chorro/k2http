@@ -20,7 +20,7 @@ And then:
 1. Clone this repo and cd to the project
 
     ```bash
-    git clone https://github.com/redBorder/k2http.git && cd k2http
+    git clone https://github.com/wizzie-io/k2http.git && cd k2http
     ```
 2. Install dependencies and compile
 
@@ -30,7 +30,7 @@ And then:
 3. Install on desired directory
 
     ```bash
-    prefix=/opt/rb make install
+    prefix=/usr/local make install
     ```
 
 ## Usage
