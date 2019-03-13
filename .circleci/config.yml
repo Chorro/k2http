@@ -9,7 +9,7 @@ workflows:
 jobs:
   build:
     docker:
-      - image: circleci/golang:1.8
+      - image: circleci/golang:1.9
     working_directory: /go/src/github.com/wizzie-io/k2http
     steps:
       - checkout
