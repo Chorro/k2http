@@ -29,6 +29,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"regexp"
 	"strings"
 	"time"
 
@@ -91,6 +92,7 @@ func init() {
 
 func main() {
 	// Initialize logger
+	done := false
 	logger = Logger.WithFields(logrus.Fields{
 		"prefix": "k2http",
 	})
@@ -105,16 +107,19 @@ func main() {
 		batchConfig: &batchConfig,
 	}
 
-	// Wait for ctrl-c to close the consumer
-	ctrlc := make(chan os.Signal, 1)
-	signal.Notify(ctrlc, os.Interrupt)
-	go func() {
-		<-ctrlc
-		kafka.Close()
-	}()
+	for !done {
+		// Wait for ctrl-c to close the consumer
+		ctrlc := make(chan os.Signal, 1)
+		signal.Notify(ctrlc, os.Interrupt)
+		go func() {
+			<-ctrlc
+			done = true
+			kafka.Close()
+		}()
 
-	// Start getting messages
-	kafka.Start()
+		// Start getting messages
+		kafka.Start()
+	}
 }
 
 func displayVersion() {
@@ -282,7 +287,11 @@ func loadKafkaConfig() KafkaConfig {
 	if topics, ok := kafkaConfig["topics"]; ok {
 		switch topics.(type) {
 		case string:
-			config.allTopics = topics.(string) == "*"
+			if topics.(string) == "*" {
+				config.consumerGroupConfig.Metadata.Full = true
+				config.consumerGroupConfig.Group.Topics.Whitelist, _ = regexp.Compile("")
+				config.consumerGroupConfig.Group.Topics.Blacklist, _ = regexp.Compile("^__")
+			}
 		default:
 			for _, topic := range topics.([]interface{}) {
 				config.topics = append(config.topics, topic.(string))
@@ -331,8 +340,22 @@ func loadKafkaConfig() KafkaConfig {
 			config.consumerGroupConfig.Version = sarama.V0_10_0_1
 		case "0_10_1_0":
 			config.consumerGroupConfig.Version = sarama.V0_10_1_0
+		case "0_10_1_1":
+			config.consumerGroupConfig.Version = sarama.V0_10_1_1
 		case "0_10_2_0":
 			config.consumerGroupConfig.Version = sarama.V0_10_2_0
+		case "0_10_2_1":
+			config.consumerGroupConfig.Version = sarama.V0_10_2_1
+		case "0_11_0_0":
+			config.consumerGroupConfig.Version = sarama.V0_11_0_0
+		case "0_11_0_1":
+			config.consumerGroupConfig.Version = sarama.V0_11_0_1
+		case "0_11_0_2":
+			config.consumerGroupConfig.Version = sarama.V0_11_0_2
+		case "1_0_0_0":
+			config.consumerGroupConfig.Version = sarama.V1_0_0_0
+		case "1_1_0_0":
+			config.consumerGroupConfig.Version = sarama.V1_1_0_0
 		default:
 			logger.Fatal("Invalid kafka version value ", v)
 		}

@@ -38,7 +38,6 @@ import (
 
 // KafkaConfig stores the configuration for the Kafka source
 type KafkaConfig struct {
-	allTopics           bool
 	topics              []string // Topics where listen for messages
 	brokers             []string // Brokers to connect
 	consumergroup       string   // ID for the consumer
@@ -127,47 +126,18 @@ func sendKafkaBatch(buf bytes.Buffer,
 }
 
 func kafkaConsumerMainLoop(k *KafkaConsumer,
-	client *cluster.Client,
+	consumer *cluster.Consumer,
 	logger *logrus.Entry,
-	httpClient *http.Client) (reloadConsumer bool) {
+	httpClient *http.Client) {
 
-	suscribedTopics := k.Config.topics
-	reloadTopicTicker := &time.Ticker{}
-	defer reloadTopicTicker.Stop()
 	var workers []KafkaPartitionConsumer
-
-	if k.Config.allTopics {
-		var err error
-		suscribedTopics, err = client.Topics()
-		if err != nil {
-			logger.Fatal("Failed to get topics: ", err)
-		}
-
-		removeKafkaInternalTopics(&suscribedTopics)
-		reloadTopicTicker = time.NewTicker(client.Config().Metadata.RefreshFrequency)
-	}
-
-	// Init consumer, consume errors & messages
-	consumer, err := cluster.NewConsumerFromClient(
-		client,
-		k.Config.consumergroup,
-		suscribedTopics)
-	if err != nil {
-		logger.Fatal("Failed to start consumer: ", err)
-	}
-	defer consumer.Close()
-
-	logger.
-		WithField("brokers", k.Config.brokers).
-		WithField("consumergroup", k.Config.consumergroup).
-		WithField("topics", suscribedTopics).
-		Info("Started consumer")
 
 mainLoop:
 	for {
 		select {
 		case part, ok := <-consumer.Partitions():
 			if !ok {
+				logger.Debug("partitions channel closed")
 				break mainLoop
 			}
 
@@ -207,19 +177,6 @@ mainLoop:
 				w.LimiterTick <- t
 			}
 
-		case <-reloadTopicTicker.C:
-			availableTopics, err := client.Topics()
-			if err != nil {
-				logger.Error("Couldn't get topics: ", err)
-				continue mainLoop
-			}
-
-			removeKafkaInternalTopics(&availableTopics)
-			if !equal(suscribedTopics, availableTopics) {
-				reloadConsumer = true
-				break mainLoop
-			}
-
 		case <-k.closed:
 			break mainLoop
 		}
@@ -239,19 +196,24 @@ func (k *KafkaConsumer) Start() {
 	httpClient := http.DefaultClient
 
 	k.Config.consumerGroupConfig.Metadata.RefreshFrequency = 30 * time.Second
-	client, err := cluster.NewClient(k.Config.brokers,
+	consumer, err := cluster.NewConsumer(k.Config.brokers,
+		k.Config.consumergroup,
+		k.Config.topics,
 		k.Config.consumerGroupConfig)
 	if err != nil {
-		logger.Fatal("Failed to start client: ", err)
+		logger.Error("Failed to start consumer: ", err)
+		return
 	}
-	defer client.Close()
 
-	for {
-		keepRunning := kafkaConsumerMainLoop(k, client, logger, httpClient)
-		if !keepRunning {
-			break
-		}
-	}
+	logger.
+		WithField("brokers", k.Config.brokers).
+		WithField("consumergroup", k.Config.consumergroup).
+		WithField("topics", k.Config.topics).
+		Info("Started consumer")
+
+	defer consumer.Close()
+
+	kafkaConsumerMainLoop(k, consumer, logger, httpClient)
 }
 
 // Close closes the connection with Kafka

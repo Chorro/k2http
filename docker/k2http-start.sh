@@ -16,4 +16,4 @@ else
 fi
 HTTP_POST_PARAMS=$(process_lists "$HTTP_POST_PARAMS")
 envsubst < config.yaml_env > config.yaml
-exec ./k2http --config config.yaml
+exec ./k2http --config config.yaml "$@"
